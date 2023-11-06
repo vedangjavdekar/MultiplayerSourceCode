@@ -1,259 +1,282 @@
 <!DOCTYPE html>
 <html>
-<head>
-	<title>my first multiplayer Game</title>
-	<script src="/socket.io/socket.io.js"></script>
-	<script type="text/javascript" src="/Client/jquery-3.2.1.min.js"></script>
-</head>
-<body>
-	<label>Online: <span id="n_players"></span></label>
-	<br>
-	<canvas id="myCanvas" width="800px" height="400px" style="border:2px solid black"></canvas>
-	<br>
-	<ul id="deathLog" style="position: absolute; top:10px;left:820px;list-style: none;">
-		<li><span style="color: orange ">player1</span>
-		 	<span style="color: red ">killed</span>
-		 	<span style="color: green ">player2</span>
-		</li>
-	</ul>
-	<script>
-		const userSize=20;
-		const bulletSize=5;
-		const speed=4;
-		var socket = io();
-		var id=null;
-		var canvas = document.getElementById("myCanvas");
-		var ctx = canvas.getContext("2d");	
+	<head>
+		<title>my first multiplayer Game</title>
+		<script src="/socket.io/socket.io.js"></script>
+		<script
+			src="https://code.jquery.com/jquery-3.7.1.min.js"
+			integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+			crossorigin="anonymous"
+		></script>
+	</head>
+	<body>
+		<label>Online: <span id="n_players"></span></label>
+		<br />
+		<canvas
+			id="myCanvas"
+			width="800px"
+			height="400px"
+			style="border: 2px solid black"
+		></canvas>
+		<br />
+		<ul
+			id="deathLog"
+			style="position: absolute; top: 10px; left: 820px; list-style: none"
+		>
+			<li>
+				<span style="color: orange">player1</span>
+				<span style="color: red">killed</span>
+				<span style="color: green">player2</span>
+			</li>
+		</ul>
+		<script>
+			const userSize = 20;
+			const bulletSize = 5;
+			const speed = 4;
+			var socket = io();
+			var id = null;
+			var canvas = document.getElementById("myCanvas");
+			var ctx = canvas.getContext("2d");
 
-		var player={};
+			var player = {};
 
+			var mousePos = { x: 0, y: 0 };
+			var mouseDown = false;
+			var onPlayer = false;
+			var stopMove = false;
 
-		var mousePos={x:0,y:0};
-		var mouseDown=false;
-		var onPlayer=false;
-		var stopMove=false;
-
-		var bulletInterval=null;
-		function getMousePos(canvas, evt) {
-    		var rect = canvas.getBoundingClientRect();
-	    	return {
-	      		x: evt.clientX - rect.left,
-	      		y: evt.clientY - rect.top
-	    	};
-		}
-
-		function getTouchPos(canvas, touch) {
-		  var rect = canvas.getBoundingClientRect();
-		  return {
-		    x: touch.touches[0].clientX - rect.left,
-		    y: touch.touches[0].clientY - rect.top
-		  };
-		}
-
-
-		function newBullet()
-		{
-			var bullet= {
-				from: player.id,
-				color:player.color,
-				x:player.x + 20* Math.cos(player.rotation*Math.PI/180),
-				y:player.y + 20* Math.sin(player.rotation*Math.PI/180),
-				rotation:player.rotation
-			};
-			socket.emit('newBullet',bullet);
-		}
-
-
-		socket.on('currPlayer',function(data){
-			player.id = data.id;
-			player.x = data.x;
-			player.y = data.y;
-			player.rotation= data.rotation;
-			player.color = data.color;
-			player.score=data.score;
-			player.health=data.health;
-		});
-
-		socket.on('PlayerCount',function(data){
-			document.getElementById('n_players').innerHTML = data.n;
-		});
-
-
-		socket.on('new positions',function(data){
-			//console.log(data.players);
-			//console.log(data.bullets);
-			console.log(data.deaths);
-			ctx.clearRect(0,0,canvas.width,canvas.height);
-
-			for (var i = 0; i < data.players.length; i++) {
-				ctx.beginPath();
-				ctx.fillStyle = data.players[i].color;
-				ctx.arc(data.players[i].x,data.players[i].y,userSize,0,2*Math.PI,false);
-				ctx.fill();
-				ctx.beginPath();
-				ctx.lineWidth = 5;
-				ctx.strokeStyle = '#ffffff';
-				ctx.arc(data.players[i].x,data.players[i].y,15,(data.players[i].rotation-30)*Math.PI/180,(data.players[i].rotation+30)*Math.PI/180,false);
-				ctx.stroke();
-				ctx.font = "14px Arial";
-				ctx.textAlign = "center";
-				if(data.players[i].id == player.id)
-				{
-					player = data.players[i];
-					ctx.font = "20px Calibri";
-					ctx.textAlign = "left";
-					ctx.fillText("Score: "+data.players[i].score,15,20);
-					ctx.textAlign = "center";
-					ctx.font = "14px Arial";
-					if(data.players[i].y-25<0)
-					{
-						ctx.fillText("You",data.players[i].x,data.players[i].y+30);
-						ctx.fillText(data.players[i].health,data.players[i].x,data.players[i].y+50);
-					}
-					else 
-					{
-						ctx.fillText("You",data.players[i].x,data.players[i].y-25);
-						ctx.fillText(data.players[i].health,data.players[i].x,data.players[i].y+40);
-					}
-				}	
-				else
-				{
-					if(data.players[i].y-25<0)
-					{
-						ctx.fillText(data.players[i].id,data.players[i].x,data.players[i].y+30);
-						ctx.fillText(data.players[i].health,data.players[i].x,data.players[i].y+50);
-					}
-					else 
-					{
-						ctx.fillText(data.players[i].id,data.players[i].x,data.players[i].y-25);
-						ctx.fillText(data.players[i].health,data.players[i].x,data.players[i].y+40);
-					}
-
-				}				
-				
+			var bulletInterval = null;
+			function getMousePos(canvas, evt) {
+				var rect = canvas.getBoundingClientRect();
+				return {
+					x: evt.clientX - rect.left,
+					y: evt.clientY - rect.top,
+				};
 			}
-			if(data.bullets!=undefined)
-			{
-				for (var i = 0; i < data.bullets.length; i++) {
+
+			function getTouchPos(canvas, touch) {
+				var rect = canvas.getBoundingClientRect();
+				return {
+					x: touch.touches[0].clientX - rect.left,
+					y: touch.touches[0].clientY - rect.top,
+				};
+			}
+
+			function newBullet() {
+				var bullet = {
+					from: player.id,
+					color: player.color,
+					x: player.x + 20 * Math.cos((player.rotation * Math.PI) / 180),
+					y: player.y + 20 * Math.sin((player.rotation * Math.PI) / 180),
+					rotation: player.rotation,
+				};
+				socket.emit("newBullet", bullet);
+			}
+
+			socket.on("currPlayer", function (data) {
+				player.id = data.id;
+				player.x = data.x;
+				player.y = data.y;
+				player.rotation = data.rotation;
+				player.color = data.color;
+				player.score = data.score;
+				player.health = data.health;
+			});
+
+			socket.on("PlayerCount", function (data) {
+				document.getElementById("n_players").innerHTML = data.n;
+			});
+
+			socket.on("new positions", function (data) {
+				//console.log(data.players);
+				//console.log(data.bullets);
+				console.log(data.deaths);
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+				for (var i = 0; i < data.players.length; i++) {
 					ctx.beginPath();
-					ctx.fillStyle = data.bullets[i].color;
-					ctx.arc(data.bullets[i].x,data.bullets[i].y,bulletSize,0,2*Math.PI,false);
+					ctx.fillStyle = data.players[i].color;
+					ctx.arc(
+						data.players[i].x,
+						data.players[i].y,
+						userSize,
+						0,
+						2 * Math.PI,
+						false
+					);
 					ctx.fill();
-				}
-			}
-			$('#deathLog').empty();
-			if(data.deaths.length!=0)
-			{
-				for (var i = 0; i < data.deaths.length; i++) {
-					$('#deathLog').append('<li><span style="color: '+data.deaths[i].color_from+' "> '+data.deaths[i].from+' </span><span style="color: red ">killed</span> <span style="color: '+data.deaths[i].color_killed+' "> '+data.deaths[i].killed+'</span></li>');
-				}
-			}
-
-			if(distance(mousePos,{x:player.x,y:player.y})<10)
-			{
-				stopMove=true;
-			}
-			else
-			{
-				stopMove=false;
-			}
-
-
-			if(!stopMove)
-			{
-				if(mouseDown)
-				{
-					player.rotation = Math.atan2(mousePos.y-player.y,mousePos.x - player.x) *180/Math.PI;
-					if(onPlayer)
-					{
-
-						player.x += speed * Math.cos(player.rotation*Math.PI/180);
-						player.y += speed * Math.sin(player.rotation*Math.PI/180);
+					ctx.beginPath();
+					ctx.lineWidth = 5;
+					ctx.strokeStyle = "#ffffff";
+					ctx.arc(
+						data.players[i].x,
+						data.players[i].y,
+						15,
+						((data.players[i].rotation - 30) * Math.PI) / 180,
+						((data.players[i].rotation + 30) * Math.PI) / 180,
+						false
+					);
+					ctx.stroke();
+					ctx.font = "14px Arial";
+					ctx.textAlign = "center";
+					if (data.players[i].id == player.id) {
+						player = data.players[i];
+						ctx.font = "20px Calibri";
+						ctx.textAlign = "left";
+						ctx.fillText("Score: " + data.players[i].score, 15, 20);
+						ctx.textAlign = "center";
+						ctx.font = "14px Arial";
+						if (data.players[i].y - 25 < 0) {
+							ctx.fillText("You", data.players[i].x, data.players[i].y + 30);
+							ctx.fillText(
+								data.players[i].health,
+								data.players[i].x,
+								data.players[i].y + 50
+							);
+						} else {
+							ctx.fillText("You", data.players[i].x, data.players[i].y - 25);
+							ctx.fillText(
+								data.players[i].health,
+								data.players[i].x,
+								data.players[i].y + 40
+							);
+						}
+					} else {
+						if (data.players[i].y - 25 < 0) {
+							ctx.fillText(
+								data.players[i].id,
+								data.players[i].x,
+								data.players[i].y + 30
+							);
+							ctx.fillText(
+								data.players[i].health,
+								data.players[i].x,
+								data.players[i].y + 50
+							);
+						} else {
+							ctx.fillText(
+								data.players[i].id,
+								data.players[i].x,
+								data.players[i].y - 25
+							);
+							ctx.fillText(
+								data.players[i].health,
+								data.players[i].x,
+								data.players[i].y + 40
+							);
+						}
 					}
-					
 				}
-				socket.emit('playerUpdate',player);
-			}
-		});
-
-		var distance = function(p1,p2)
-		{
-			var x = p1.x - p2.x;
-			var y = p1.y - p2.y;
-			return Math.sqrt(x*x + y*y);
-		}
-
-
-		canvas.onmousedown = function(evt)
-		{
-			mouseDown = true;
-			mousePos = getMousePos(canvas,evt);
-			if((distance(mousePos,{x:player.x,y:player.y})<userSize))
-			{
-				onPlayer=true;
-				console.log(player);
-			}
-			else
-			{
-				onPlayer=false;
-				if(bulletInterval==null)
-				{
-					bulletInterval = setInterval(newBullet,300);
+				if (data.bullets != undefined) {
+					for (var i = 0; i < data.bullets.length; i++) {
+						ctx.beginPath();
+						ctx.fillStyle = data.bullets[i].color;
+						ctx.arc(
+							data.bullets[i].x,
+							data.bullets[i].y,
+							bulletSize,
+							0,
+							2 * Math.PI,
+							false
+						);
+						ctx.fill();
+					}
 				}
-			}
-			console.log(onPlayer);
-			
-		}
-		canvas.onmouseup = function(evt)
-		{
-			mouseDown = false;
-			onPlayer = false;
-			clearInterval(bulletInterval);
-			bulletInterval=null;
-		}
-
-		canvas.onmousemove = function(evt)
-		{
-			mousePos = getMousePos(canvas,evt);
-		}
-
-
-		canvas.addEventListener('touchstart',function(evt){
-			evt.preventDefault();
-			mousePos = getTouchPos(canvas, evt);
-			mouseDown = true;
-			if((distance(mousePos,{x:player.x,y:player.y})<userSize+50))
-			{
-				onPlayer=true;
-				console.log(player);
-			}
-			else
-			{
-				onPlayer=false;
-				if(bulletInterval==null)
-				{
-					bulletInterval = setInterval(newBullet,300);
+				$("#deathLog").empty();
+				if (data.deaths.length != 0) {
+					for (var i = 0; i < data.deaths.length; i++) {
+						$("#deathLog").append(
+							'<li><span style="color: ' +
+								data.deaths[i].color_from +
+								' "> ' +
+								data.deaths[i].from +
+								' </span><span style="color: red ">killed</span> <span style="color: ' +
+								data.deaths[i].color_killed +
+								' "> ' +
+								data.deaths[i].killed +
+								"</span></li>"
+						);
+					}
 				}
-				
-			}
 
-		});
+				if (distance(mousePos, { x: player.x, y: player.y }) < 10) {
+					stopMove = true;
+				} else {
+					stopMove = false;
+				}
 
-		canvas.addEventListener('touchend',function(evt){
-			evt.preventDefault();
-			mouseDown = false;
-			onPlayer = false;
-			clearInterval(bulletInterval);
-			bulletInterval=null;
-		});
+				if (!stopMove) {
+					if (mouseDown) {
+						player.rotation =
+							(Math.atan2(mousePos.y - player.y, mousePos.x - player.x) * 180) /
+							Math.PI;
+						if (onPlayer) {
+							player.x += speed * Math.cos((player.rotation * Math.PI) / 180);
+							player.y += speed * Math.sin((player.rotation * Math.PI) / 180);
+						}
+					}
+					socket.emit("playerUpdate", player);
+				}
+			});
 
-		canvas.addEventListener('touchmove',function(evt){
-			evt.preventDefault();
-			mousePos = getTouchPos(canvas, evt);
-		});
+			var distance = function (p1, p2) {
+				var x = p1.x - p2.x;
+				var y = p1.y - p2.y;
+				return Math.sqrt(x * x + y * y);
+			};
 
-	</script>
+			canvas.onmousedown = function (evt) {
+				mouseDown = true;
+				mousePos = getMousePos(canvas, evt);
+				if (distance(mousePos, { x: player.x, y: player.y }) < userSize) {
+					onPlayer = true;
+					console.log(player);
+				} else {
+					onPlayer = false;
+					if (bulletInterval == null) {
+						bulletInterval = setInterval(newBullet, 300);
+					}
+				}
+				console.log(onPlayer);
+			};
+			canvas.onmouseup = function (evt) {
+				mouseDown = false;
+				onPlayer = false;
+				clearInterval(bulletInterval);
+				bulletInterval = null;
+			};
 
+			canvas.onmousemove = function (evt) {
+				mousePos = getMousePos(canvas, evt);
+			};
 
-</body>
+			canvas.addEventListener("touchstart", function (evt) {
+				evt.preventDefault();
+				mousePos = getTouchPos(canvas, evt);
+				mouseDown = true;
+				if (distance(mousePos, { x: player.x, y: player.y }) < userSize + 50) {
+					onPlayer = true;
+					console.log(player);
+				} else {
+					onPlayer = false;
+					if (bulletInterval == null) {
+						bulletInterval = setInterval(newBullet, 300);
+					}
+				}
+			});
+
+			canvas.addEventListener("touchend", function (evt) {
+				evt.preventDefault();
+				mouseDown = false;
+				onPlayer = false;
+				clearInterval(bulletInterval);
+				bulletInterval = null;
+			});
+
+			canvas.addEventListener("touchmove", function (evt) {
+				evt.preventDefault();
+				mousePos = getTouchPos(canvas, evt);
+			});
+		</script>
+	</body>
 </html>
